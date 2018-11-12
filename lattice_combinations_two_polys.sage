@@ -1,13 +1,14 @@
 from sage.modules.free_module_integer import IntegerLattice as Lattice
 
-N = 3  # Degree of polynomial used as modulus and dimension of lattice
+N = 6  # Degree of polynomial used as modulus and dimension of lattice
 
-q = next_prime(235)
+q = random_prime(1000, 500)
 
 R.<x> = ZZ['x']
 f = x^N + 1     # modulus defining R / <f>
 
 print "Ring: ZZ[x]/<", f, ">"
+print "q =", q
 
 def phi(h): # isomorphism from R/f to Z^n (return a vector representing h)
     v = h.coefficients(sparse=False)
@@ -28,7 +29,7 @@ def matrix_polynomial_product(h):
 # for some vectors u, a, and b of R/<f>.
 # This function receives a v from L and return such polynomials u, a, and b.
 def lattice_point_to_polys(v):
-    v = list(L.random_element()) # treat vector over ZZ as a simple list
+    v = list(v) # treat vector over ZZ as a simple list
 
     v0 = inv_phi(v[0:N]) # polynomial corresponding to the first N entries
     a = inv_phi(v[N:2*N])
@@ -37,13 +38,17 @@ def lattice_point_to_polys(v):
     
     # assert that the lattice vector v has the format
     # (u*q + c1*a % f + c2*b % f, a, b)
-    assert ((u*q + (a*c1 % f) + (b*c2) % f) == v0)
+    # or, equivalently, that v = (v0, a, b) with
+    # a*c1 + b*c2 = v0 in R/<f,q> (mod f and mod q)
+    assert ((u*q + ((a*c1 + b*c2) % f)) == v0)
 
     return u, a, b
 
 
-c1 = R.random_element(degree=randint(0,N-1)) # polynomial with random degree
-c2 = R.random_element(degree=randint(0,N-1))
+bound = 2
+# polynomial with random degree and coefficients in [-bound, bound]
+c1 = R.random_element(randint(0,N-1), -bound, bound) 
+c2 = R.random_element(randint(0,N-1), -bound, bound) 
 
 C1 = matrix_polynomial_product(c1)
 C2 = matrix_polynomial_product(c2)
@@ -58,3 +63,15 @@ for i in xrange(100):
     u, a, b = lattice_point_to_polys(v)
 
 print "Lattice points have the expected format."
+
+print "c1 =", c1
+print "c2 =", c2
+v = L.shortest_vector()
+print "Shortest (nonzero) vector of L:"
+print v
+u, a, b = lattice_point_to_polys(v)
+print "a =", a
+print "b =", b
+print "u =", u
+
+print "a*c1 + b*c2 % f =", ((a*c1 + b*c2) % f)
