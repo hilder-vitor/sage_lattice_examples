@@ -62,12 +62,9 @@ def encode(m):
 ############################    MAIN PART       ###################################
 
 # Use M < N < q
-M = 5
+M = 2
 N = 2**3  # Degree of polynomial used as modulus and dimension of lattice
 q = random_prime(N^2 * M, proof=None, lbound=N) # arbitrary upper bound
-
-assert(M < N < q)
-
 Zx.<x> = ZZ['x']
 f = x^N + 1     # modulus defining Zx / <f>
 R = Zx.quotient(f)
@@ -84,7 +81,6 @@ print "Ring: ZZ[x]/<", f, ">"
 print "Generator of the principal ideal: g =", g
 print "q =", q
 
-print "M =", M
 
 z = Zx.random_element(randint(0,N-1), int(-q/2), int(q/2))
 inv_z = inverse_polynomial(z)
@@ -95,37 +91,46 @@ K = Matrix.random(Zq, M, M).lift()
 assert(0 != (K.det() % q)) # K is invertible over Zq
 
 # vector of polynomials with random degree and coefficients in [-B_M, B_M]
-m = [[Zx.random_element(randint(0,g.degree()-1), -B_M, B_M) for j in xrange(M)] for i in xrange(M+1)]
-c = [[encode(m[i][j]) for j in xrange(M)] for i in xrange(M+1)]
-cK = [(vector(c[i]) * K % q) for i in xrange(M+1)]  # randomizing the encodings
+m1 = [Zx.random_element(randint(0,g.degree()-1), -B_M, B_M) for i in xrange(M)]
+c1 = [encode(m1_i) for m1_i in m1]
+c1K = (vector(c1) * K % q) # randomizing the encodings
+m2 = [Zx.random_element(randint(0,g.degree()-1), -B_M, B_M) for i in xrange(M)]
+c2 = [encode(m2_i) for m2_i in m2]
+c2K = (vector(c2) * K % q)
+m3 = [Zx.random_element(randint(0,g.degree()-1), -B_M, B_M) for i in xrange(M)]
+c3 = [encode(m3_i) for m3_i in m3]
+c3K = (vector(c3) * K % q)
 
 print ""
 print "Vectors of encodings:"
-for i in xrange(M+1):
-    print "c%i*K = %s" %(i, cK[i])
+print "c1*K =", c1K 
+print "c2*K =", c2K 
+print "c3*K =", c3K 
 
-C = [[matrix_polynomial_product(cK[i][j]) for i in xrange(M+1)] for j in xrange(M)]
+C11 = matrix_polynomial_product(c1K[0])
+C12 = matrix_polynomial_product(c1K[1])
+C21 = matrix_polynomial_product(c2K[0])
+C22 = matrix_polynomial_product(c2K[1])
+C31 = matrix_polynomial_product(c3K[0])
+C32 = matrix_polynomial_product(c3K[1])
 
-A = block_matrix(ZZ, C)#[[C11, C21, C31], [C12, C22, C32]])
+A = block_matrix(ZZ, [[C11, C21, C31], [C12, C22, C32]])
+
 L = q_ary_orthogonal_lattice(A, q)
-assert(L.rank() == (M+1) * N)     # is the rank equal to N*(M+1)?
-assert(L.rank() == L.dimension()) # is the lattice full-rank?
-assert(L.volume() == q^(M*N))     # is the determinant equal to q^(M*N)?
 
+a,b,c = lattice_point_to_polys(L.reduced_basis[0])
 print ""
 print "Orthogonal lattice L created."
-print "Rank = dimension = N*(M+1) = ", L.rank()
+print "(aprox) shortest: (a, b, c) =", (a, b, c)
+print "size(a, b, c) =", max(size(a), size(b), size(c))
 
-for i in xrange(150):
+for i in xrange(100):
     v = L.random_element()
-    polys = lattice_point_to_polys(v)
+    a, b, c = lattice_point_to_polys(v)
 
-    # assert that the "polynomials in L" are orthogonal to the original encodings (without Kilian's randomization)
-    for j in xrange(M):
-        inner_prod = 0
-        for i in xrange(M+1):
-            inner_prod += polys[i] * c[i][j]
-        assert(0 == Rq(inner_prod))
+    # assert that the polynomials "in L" are orthogonal to the original encodings (without Kilian's randomization)
+    assert(0 == Rq(a*c1[0] + b*c2[0] + c*c3[0]))
+    assert(0 == Rq(a*c1[1] + b*c2[1] + c*c3[1]))
 
-print "Vectors in L are orthogonal to the vectors of encodings."
+print "Vectors in L are orthogonal to the vectors of encodings [c11, c21, c31] and [c12, c22, c32]"
 
